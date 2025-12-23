@@ -1,92 +1,39 @@
 import time
-import random
-import io
+
 from playwright.sync_api import Page
 from PIL import Image
+from mistune import create_markdown
+from mistune.plugins.math import math, math_in_list, math_in_quote
+from mistune.plugins.formatting import strikethrough
+from mistune.renderers.markdown import MarkdownRenderer
 
-def _apply_visual_augmentations(page: Page):
-    # resize viewport
-    width = random.randint(1000, 1600)
-    page.set_viewport_size({"width": width, "height": 2048})
-    print(f"   [Augment] Changing width to {width}px")
+from dataset.crawlers.common import (
+    apply_visual_augmentations, get_screenshot_with_jitter
+)
 
-    # inject css
-    selected_font = random.choice([
-        "Arial, sans-serif",
-        "'Times New Roman', serif",
-        "'Courier New', monospace",
-        "'Microsoft YaHei', sans-serif",
-        "Verdana, sans-serif",
-        "Georgia, serif"
-    ])
-    font_size = random.choice(['14px', '16px', '18px', '20px'])
-    line_height = random.choice(['1.2', '1.5', '1.8'])
 
-    page.evaluate(f"""
-        const target = document.querySelector('.problem') || document.body;
-        target.style.fontFamily = "{selected_font}";
-        target.style.fontSize = "{font_size}";
-    """)
-    print(
-        f"   [Augment] CSS injection: "
-        f"fontFamily = {selected_font.split(',')[0]}, "
-        f"fontSize = {font_size}, "
-        f"lineHeight = {line_height}"
-    )
+class MyRenderer(MarkdownRenderer):
+    """Override some methods to meet OCR need"""
 
-    time.sleep(0.2)
+    def image(self, token, state) -> str:
+        return "[IMAGE]"
 
-def _get_description(page: Page) -> str:
-    copy_btn = page.locator('.problem-block-actions').get_by_text('Markdown').first
-    if not copy_btn.is_visible():
-        raise RuntimeError("Copy button not found")
+    def link(self, token, state) -> str:
+        text = self.render_children(token, state)
+        url = token['attrs']['url']
+        return text if text != url else f"<{url}>"
 
-    copy_btn.click()
-    time.sleep(0.5)
-    description = page.evaluate('navigator.clipboard.readText()')
+    def thematic_break(self, token, state) -> str:
+        return "---\n"
 
-    # strip first two lines - problem title
-    description = '\n'.join(description.split('\n')[2:])
-    return description
+    def block_math(self, token, state) -> str:
+        """Render block math"""
+        return f"$$\n{token['raw']}\n$$\n\n"
 
-def _get_screenshot(page: Page) -> Image:
-    locator = page.locator('.problem').first
-    if not locator.is_visible():
-        raise RuntimeError("Problem content not found")
+    def inline_math(self, token, state) -> str:
+        """Render block math"""
+        return f"${token['raw']}$"
 
-    rect = locator.bounding_box()
-    if rect is None:
-        raise RuntimeError("Failed to get bounding box")
-
-    left = rect['x']
-    top = rect['y']
-    right = rect['x'] + rect['width']
-    bottom = rect['y'] + rect['height']
-    paddings = locator.evaluate("""
-    el => {
-        const style = window.getComputedStyle(el);
-        return {
-            top: parseInt(style.paddingTop),
-            right: parseInt(style.paddingRight),
-            bottom: parseInt(style.paddingBottom),
-            left: parseInt(style.paddingLeft)
-        }
-    }
-    """)
-
-    max_extra = 50.0
-    left += random.uniform(-max_extra, paddings['left'])
-    top += random.uniform(-max_extra, paddings['top'])
-    right += random.uniform(-paddings['right'], max_extra)
-    bottom += random.uniform(-paddings['bottom'], max_extra)
-
-    image_bytes = page.screenshot(clip={
-        'x': left,
-        'y': top,
-        'width': right - left,
-        'height': bottom - top
-    })
-    return Image.open(io.BytesIO(image_bytes))
 
 def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
     """
@@ -102,7 +49,31 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
     page.goto(f'https://www.luogu.com.cn/problem/{problem_id}')
     page.wait_for_load_state('networkidle')
 
-    _apply_visual_augmentations(page)
-    description = _get_description(page)
-    image = _get_screenshot(page)
+    # get statement element
+    statement = page.locator('.problem').first
+    if not statement.is_visible():
+        raise RuntimeError("Problem statement not found")
+
+    # visual augmentation
+    apply_visual_augmentations(page, statement)
+
+    # take screenshot
+    image = get_screenshot_with_jitter(page, statement)
+
+    # get description
+    copy_btn = page.locator('.problem-block-actions').get_by_text('Markdown').first
+    if not copy_btn.is_visible():
+        raise RuntimeError("Copy button not found")
+
+    copy_btn.click()
+    time.sleep(0.2)
+    description = page.evaluate('navigator.clipboard.readText()')
+
+    markdown = create_markdown(
+        renderer=MyRenderer(),
+        plugins=[math, math_in_list, math_in_quote, strikethrough]
+    )
+    description = '\n'.join(description.split('\n')[2:])
+    description = markdown(description)
+
     return image, description
