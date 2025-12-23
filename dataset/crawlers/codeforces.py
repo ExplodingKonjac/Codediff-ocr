@@ -9,8 +9,9 @@ from dataset.crawlers.common import (
     apply_visual_augmentations, get_screenshot_with_jitter
 )
 
+
 class CodeforcesConverter(MarkdownConverter):
-    """Convert codeforces html to markdown"""
+    """Convert Codeforces statement to markdown"""
 
     def convert_div(self,
                     el: bs4.element.Tag,
@@ -20,10 +21,10 @@ class CodeforcesConverter(MarkdownConverter):
         if 'title' in class_list:
             parent_class_list = el.parent.get_attribute_list('class', [])
             if 'input' in parent_class_list or 'output' in parent_class_list:
-                return f"### {text}\n\n"
-            return f"# {text}\n\n"
+                return f"\n\n### {text}\n\n"
+            return f"\n\n# {text}\n\n"
         if 'section-title' in class_list:
-            return f"## {text}\n\n"
+            return f"\n\n## {text}\n\n"
         if 'input-output-copier' in class_list:
             return ""
         if 'time-limit' in class_list or \
@@ -49,7 +50,7 @@ class CodeforcesConverter(MarkdownConverter):
         if el.attrs.get('type') == 'math/tex':
             return f"${text}$"
         if el.attrs.get('type') == 'math/tex; mode=display':
-            return f"$$\n{text}\n$$\n\n"
+            return f"\n\n$$\n{text}\n$$\n\n"
         return ""
 
     def convert_pre(self,
@@ -58,6 +59,21 @@ class CodeforcesConverter(MarkdownConverter):
                     parent_tags: set[str]) -> str:
         text = el.get_text('\n')
         return super().convert_pre(el, text, parent_tags)
+
+    def convert_a(self,
+                  el: bs4.element.Tag,
+                  text: str,
+                  parent_tags: set[str]) -> str:
+        href = el.get('href')
+        if text.replace('\\_', '_') == href:
+            return f"<{href}>"
+        return text
+
+    def convert_img(self,
+                    el: bs4.element.Tag,
+                    text: str,
+                    parent_tags: set[str]) -> str:
+        return "[IMAGE]"
 
 
 def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
