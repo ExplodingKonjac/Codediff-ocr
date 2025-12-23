@@ -1,0 +1,16 @@
+[project]
+name = "statement-ocr"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dataset>=1.6.2",
+    "markdownify>=1.2.2",
+    "playwright>=1.57.0",
+    "transformers>=4.57.3",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
