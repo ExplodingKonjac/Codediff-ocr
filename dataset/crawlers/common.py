@@ -2,8 +2,19 @@ import io
 import random
 import time
 
+import bs4
 from playwright.sync_api import Page, Locator
 from PIL import Image
+
+def parent_convert(obj: object,
+                   tag_name: str,
+                   el: bs4.element.Tag,
+                   text: str,
+                   parent_tags: set[str]) -> str:
+    """Fallback to converter of parent"""
+
+    f = getattr(super(type(obj), obj), f'convert_{tag_name}', None)
+    return text if f is None else f(el, text, parent_tags)
 
 def apply_visual_augmentations(page: Page, locator: Locator):
     """
@@ -21,7 +32,7 @@ def apply_visual_augmentations(page: Page, locator: Locator):
     print(f"[Augment] Changing width to {width}px")
 
     # inject css
-    font_pool_en = {
+    font_pool_en: dict[str, list[str]] = {
         'sans-serif': [
             'Arial', 'Segoe UI', 'Verdana', 'Tahoma', 'Microsoft Sans Serif',
             'DejaVu Sans', 'Liberation Sans', 'Ubuntu', 'FreeSans', 'Noto Sans',
@@ -38,7 +49,7 @@ def apply_visual_augmentations(page: Page, locator: Locator):
             'Comic Sans',
         ]
     }
-    font_pool_zh = {
+    font_pool_zh: dict[str, list[str]] = {
         'sans-serif': [
             'Microsoft YaHei', 'SimHei', 'Noto Sans CJK SC',
         ],
@@ -71,9 +82,9 @@ def apply_visual_augmentations(page: Page, locator: Locator):
 
     locator.evaluate(f"""
     el => {{
-        el.style.fontFamily = "{font_family}";
-        el.style.fontSize = "{font_size}";
-        el.style.lineHeight = "{line_height}";
+        el.style.setProperty("font-family", "{font_family}", "important");
+        el.style.setProperty("font-size", "{font_size}", "important");
+        el.style.setProperty("line-height", "{line_height}", "important");
     }}
     """)
 
@@ -89,7 +100,7 @@ def apply_visual_augmentations(page: Page, locator: Locator):
     )
     time.sleep(0.2)
 
-def get_screenshot_with_jitter(page: Page, locator: Locator) -> Image:
+def get_screenshot_with_jitter(page: Page, locator: Locator) -> Image.Image:
     """
     Get screenshot of a locator with a random jitter of borders
 

@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-from dataset.crawlers.atcoder import crawl_problem
+from dataset.crawlers.loj import crawl_problem
 
 if __name__ == "__main__":
     with sync_playwright() as p:
@@ -13,6 +13,6 @@ if __name__ == "__main__":
         )
         page = context.new_page()
 
-        image, description = crawl_problem(page, "abc435d")
+        image, description = crawl_problem(page, "552")
         image.save("output/image.png")
         print(description)

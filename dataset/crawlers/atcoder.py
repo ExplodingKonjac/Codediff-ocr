@@ -1,9 +1,9 @@
 import re
 
 import bs4
-from markdownify import MarkdownConverter
 from playwright.sync_api import Page
 from PIL import Image
+from markdownify import MarkdownConverter
 
 from dataset.crawlers.common import (
     apply_visual_augmentations, get_screenshot_with_jitter
@@ -17,15 +17,19 @@ class AtCoderConverter(MarkdownConverter):
                      el: bs4.element.Tag,
                      text: str,
                      parent_tags: set[str]) -> str:
-        class_list = el.get_attribute_list('class', [])
+        class_list = el.get_attribute_list('class')
         if el.get('id') == 'task-lang-btn':
             return ''
         if 'btn-copy' in class_list:
             return ''
         if 'katex-display' in class_list:
-            return f"\n\n$$\n{el.find('annotation').get_text()}\n$$\n\n"
+            annotation = el.find('annotation')
+            assert annotation is not None
+            return f"\n\n$$\n{annotation.get_text()}\n$$\n\n"
         if 'katex' in class_list:
-            return f"${el.find('annotation').get_text()}$"
+            annotation = el.find('annotation')
+            assert annotation is not None
+            return f"${annotation.get_text()}$"
         if 'h2' in class_list:
             return f"\n\n# {text.strip()}\n\n"
         return text
@@ -34,7 +38,7 @@ class AtCoderConverter(MarkdownConverter):
                   el: bs4.element.Tag,
                   text: str,
                   parent_tags: set[str]) -> str:
-        if 'btn' in el.get_attribute_list('class', []):
+        if 'btn' in el.get_attribute_list('class'):
             return ''
         href = el.get('href')
         if text.replace('\\_', '_') == href:
@@ -55,7 +59,7 @@ class AtCoderConverter(MarkdownConverter):
         return super().convert_hN(n - 1, el, text, parent_tags)
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
+def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from AtCoder
 
@@ -67,6 +71,8 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
     """
 
     match = re.fullmatch(r'([a-zA-Z]+\d+)([a-zA-Z]+)', problem_id.lower())
+    if match is None:
+        raise RuntimeError("Invalid problem_id")
     contest, problem_index = match.groups()
 
     page.goto(f"https://atcoder.jp/contests/{contest}/tasks/{contest}_{problem_index}")

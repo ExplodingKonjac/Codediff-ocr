@@ -1,12 +1,12 @@
 import re
 
 import bs4
-from markdownify import MarkdownConverter
 from playwright.sync_api import Page
 from PIL import Image
+from markdownify import MarkdownConverter
 
 from dataset.crawlers.common import (
-    apply_visual_augmentations, get_screenshot_with_jitter
+    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -17,9 +17,10 @@ class CodeforcesConverter(MarkdownConverter):
                     el: bs4.element.Tag,
                     text: str,
                     parent_tags: set[str]) -> str:
-        class_list = el.get_attribute_list('class', [])
+        class_list = el.get_attribute_list('class')
         if 'title' in class_list:
-            parent_class_list = el.parent.get_attribute_list('class', [])
+            assert el.parent is not None
+            parent_class_list = el.parent.get_attribute_list('class')
             if 'input' in parent_class_list or 'output' in parent_class_list:
                 return f"\n\n### {text}\n\n"
             return f"\n\n# {text}\n\n"
@@ -31,14 +32,14 @@ class CodeforcesConverter(MarkdownConverter):
            'memory-limit' in class_list or \
            'input-file' in class_list or \
            'output-file' in class_list:
-            return super().convert_div(el, el.get_text(': '), parent_tags)
-        return super().convert_div(el, text, parent_tags)
+            return parent_convert(self, 'div', el, el.get_text(': '), parent_tags)
+        return parent_convert(self, 'div', el, text, parent_tags)
 
     def convert_span(self,
                      el: bs4.element.Tag,
                      text: str,
                      parent_tags: set[str]) -> str:
-        class_list = el.get_attribute_list('class', [])
+        class_list = el.get_attribute_list('class')
         if 'MathJax' in class_list or 'MathJax_Display' in class_list:
             return ""
         return text
@@ -58,7 +59,7 @@ class CodeforcesConverter(MarkdownConverter):
                     text: str,
                     parent_tags: set[str]) -> str:
         text = el.get_text('\n')
-        return super().convert_pre(el, text, parent_tags)
+        return parent_convert(self, 'pre', el, text, parent_tags)
 
     def convert_a(self,
                   el: bs4.element.Tag,
@@ -76,7 +77,7 @@ class CodeforcesConverter(MarkdownConverter):
         return "[IMAGE]"
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
+def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from Codeforces
 

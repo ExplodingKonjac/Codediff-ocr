@@ -35,7 +35,7 @@ class MyRenderer(MarkdownRenderer):
         return f"${token['raw']}$"
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image, str]:
+def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from Luogu
 
