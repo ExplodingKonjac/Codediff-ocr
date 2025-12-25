@@ -3,7 +3,7 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from dataset.crawlers import (
+from crawlers import (
     parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
 )
 

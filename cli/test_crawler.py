@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 from playwright.sync_api import sync_playwright
 
-from dataset.crawlers import format_markdown
+from crawlers import format_markdown
 
 @click.command()
 @click.option('--state-file', 'state_file', type=str, default=None)
@@ -14,7 +14,7 @@ from dataset.crawlers import format_markdown
 def test_crawler(state_file: str | None, oj: str, problem_id: str):
     """Test crawler"""
 
-    crawler = import_module(f'dataset.crawlers.{oj}')
+    crawler = import_module(f'crawlers.{oj}')
 
     with sync_playwright() as p:
         browser = p.chromium.launch(

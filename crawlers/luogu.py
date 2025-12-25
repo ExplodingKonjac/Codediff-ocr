@@ -5,7 +5,7 @@ from PIL import Image
 from mistune import create_markdown
 from mistune.renderers.markdown import MarkdownRenderer
 
-from dataset.crawlers import (
+from crawlers import (
     apply_visual_augmentations, get_screenshot_with_jitter
 )
 
