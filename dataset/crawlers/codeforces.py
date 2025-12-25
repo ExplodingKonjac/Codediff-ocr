@@ -5,7 +5,7 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from dataset.crawlers.common import (
+from dataset.crawlers import (
     parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
 )
 
@@ -61,31 +61,17 @@ class CodeforcesConverter(MarkdownConverter):
         text = el.get_text('\n')
         return parent_convert(self, 'pre', el, text, parent_tags)
 
-    def convert_a(self,
-                  el: bs4.element.Tag,
-                  text: str,
-                  parent_tags: set[str]) -> str:
-        href = el.get('href')
-        if text.replace('\\_', '_') == href:
-            return f"<{href}>"
-        return text
-
-    def convert_img(self,
-                    el: bs4.element.Tag,
-                    text: str,
-                    parent_tags: set[str]) -> str:
-        return "[IMAGE]"
-
 
 def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from Codeforces
 
     Args:
-        problem_id: The problem id to crawl
+        page (Page): The page object.
+        problem_id (str): Problem ID in Codeforces.
 
     Returns:
-        A tuple of (image, description)
+        tuple[Image.Image, str]: A tuple of (image, description)
     """
 
     match = re.fullmatch(r'(\d+)([A-Z]+)', problem_id)

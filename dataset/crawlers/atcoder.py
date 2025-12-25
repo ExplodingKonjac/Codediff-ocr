@@ -5,8 +5,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from dataset.crawlers.common import (
-    apply_visual_augmentations, get_screenshot_with_jitter
+from dataset.crawlers import (
+    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -40,16 +40,7 @@ class AtCoderConverter(MarkdownConverter):
                   parent_tags: set[str]) -> str:
         if 'btn' in el.get_attribute_list('class'):
             return ''
-        href = el.get('href')
-        if text.replace('\\_', '_') == href:
-            return f"<{href}>"
-        return text
-
-    def convert_img(self,
-                    el: bs4.element.Tag,
-                    text: str,
-                    parent_tags: set[str]) -> str:
-        return "[IMAGE]"
+        return parent_convert(self, 'a', el, text, parent_tags)
 
     def convert_hN(self,
                    n: int,
@@ -64,10 +55,11 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     Crawl problem statement of a given problem_id from AtCoder
 
     Args:
-        problem_id: Problem ID to crawl.
+        page (Page): The page object.
+        problem_id (str): Problem ID in AtCoder.
 
     Returns:
-        A tuple of (image, description)
+        tuple[Image.Image, str]: A tuple of (image, description)
     """
 
     match = re.fullmatch(r'([a-zA-Z]+\d+)([a-zA-Z]+)', problem_id.lower())
