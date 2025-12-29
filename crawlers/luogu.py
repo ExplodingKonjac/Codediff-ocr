@@ -7,10 +7,8 @@ import requests
 from playwright.sync_api import Page
 from PIL import Image
 
-from crawlers import (
-    USER_AGENT, request_retry,
-    apply_visual_augmentations, get_screenshot_with_jitter
-)
+from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from utils.web import USER_AGENT, request_retry
 
 def crawl_problem(page: Page, *,
                   problem_id: str,
@@ -63,16 +61,13 @@ def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
     logger = logging.getLogger("Fetcher")
     total_num = 0
 
-    url = "https://www.luogu.com.cn/problem/list"
-    headers = {'x-lentille-request': 'content-only', 'user-agent': USER_AGENT}
-
     for problem_type in ('P', 'B'):
         logger.info("Fetching problemset '%s'...", problem_type)
         for page in count(0):
             resp = request_retry(5, lambda: requests.get(
-                url,
+                "https://www.luogu.com.cn/problem/list",
                 params={'page': page, 'type': problem_type},
-                headers=headers,
+                headers={'x-lentille-request': 'content-only', 'user-agent': USER_AGENT},
                 timeout=5
             ), lambda retry_count, e: logger.exception(
                 "Failed to fetch problem list from Luogu: %s, retrying (%d)...",

@@ -8,10 +8,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from crawlers import (
-    request_retry, parent_convert,
-    apply_visual_augmentations, get_screenshot_with_jitter
-)
+from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from utils.web import request_retry
 
 
 class AtCoderConverter(MarkdownConverter):
@@ -44,14 +42,14 @@ class AtCoderConverter(MarkdownConverter):
                   parent_tags: set[str]) -> str:
         if 'btn' in el.get_attribute_list('class'):
             return ''
-        return parent_convert(self, 'a', el, text, parent_tags)
+        return getattr(super(), "convert_a")(el, text, parent_tags)
 
     def convert_hN(self,
                    n: int,
                    el: bs4.element.Tag,
                    text: str,
                    parent_tags: set[str]) -> str:
-        return super().convert_hN(n - 1, el, text, parent_tags)
+        return getattr(super(), 'convert_hN')(n - 1, el, text, parent_tags)
 
 
 def crawl_problem(page: Page, *,

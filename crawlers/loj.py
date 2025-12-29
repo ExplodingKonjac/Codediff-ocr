@@ -8,10 +8,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from crawlers import (
-    request_retry, parent_convert,
-    apply_visual_augmentations, get_screenshot_with_jitter
-)
+from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from utils.web import request_retry
 
 
 class LOJConverter(MarkdownConverter):
@@ -37,7 +35,7 @@ class LOJConverter(MarkdownConverter):
                 return f"\n\n## {text}\n\n"
             if 'small' in class_list:
                 return f"\n\n### {text}\n\n"
-        return parent_convert(self, 'div', el, text, parent_tags)
+        return getattr(super(), "convert_div")(el, text, parent_tags)
 
     def convert_a(self,
                   el: bs4.element.Tag,
@@ -46,7 +44,7 @@ class LOJConverter(MarkdownConverter):
         class_list = el.get_attribute_list('class')
         if '_copySample_1rcs8_202' in class_list:
             return ""
-        return parent_convert(self, 'a', el, text, parent_tags)
+        return getattr(super(), "convert_a")(el, text, parent_tags)
 
 
 def crawl_problem(page: Page, *,

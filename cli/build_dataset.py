@@ -11,17 +11,17 @@ from pathlib import Path
 import click
 from playwright.sync_api import sync_playwright, Page
 from rich.highlighter import NullHighlighter
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, TimeElapsedColumn
 from rich.traceback import install
 from PIL import Image
 
-from crawlers import USER_AGENT, format_markdown, crawl_problem, fetch_problem_list
-from richlog import RichLogManager
+from crawlers import crawl_problem, fetch_problem_list
+from utils.richlog import RichLogManager
+from utils.web import USER_AGENT
+from utils.text import format_markdown
 
 RESTART_LOOPS = 100
 DEFAULT_WORKERS = max((os.cpu_count() or 1) - 2, 1)
-
-install()
 
 log_manager = RichLogManager(
     level=logging.INFO,
@@ -32,6 +32,8 @@ log_manager = RichLogManager(
     log_time_format='[%X]',
     highlighter=NullHighlighter(),
 )
+install()
+
 
 @dataclass(frozen=True)
 class Problem:
@@ -64,19 +66,19 @@ def _producer_process(output_path: Path,
         logger.exception("Error reading meta.jsonl")
 
     task_count = 0
-    # for oj in ('atcoder', 'codeforces', 'loj', 'luogu'):
-    for oj in ('accoding',):
+    for oj in ('atcoder', 'codeforces', 'loj', 'luogu', 'accoding'):
+    # for oj in ('accoding',):
         logger.info("Fetching problem list from %s...", oj)
         for problem_id, contest_id in fetch_problem_list(oj):
             task = Problem(oj=oj, problem_id=problem_id, contest_id=contest_id)
             if task not in tasks_done:
                 task_queue.put(task)
+                report_queue.put(1)
                 task_count += 1
 
     for _ in range(num_workers):
         task_queue.put(None)
-    report_queue.put(task_count)
-    logger.info("Fetched %d tasks.", task_count)
+    logger.info("Fetching done. %d tasks in total.", task_count)
 
 @log_manager.sub_process
 def _worker_process(worker_id: int,
@@ -188,8 +190,16 @@ def build_dataset(output_path: Path, num_workers: int, state_file: Optional[str]
         process.start()
 
     with (
-        Progress(transient=True) as progress,
-        open(Path(output_path) / 'meta.jsonl', 'a', encoding='utf-8') as f
+        Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("({task.completed}/{task.total})"),
+            TimeRemainingColumn(),
+            TimeElapsedColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>6.2f}%"),
+            transient=True
+        ) as progress,
+        open(Path(output_path) / 'meta.jsonl', 'a', encoding='utf-8') as f,
     ):
         task_id = progress.add_task("Processing problems...", total=None)
 
@@ -199,7 +209,8 @@ def build_dataset(output_path: Path, num_workers: int, state_file: Optional[str]
             if result is None:
                 finished_count += 1
             elif isinstance(result, int):
-                progress.update(task_id, total=result)
+                old_total = progress.tasks[task_id].total or 0
+                progress.update(task_id, total=old_total + result)
             else:
                 task, image_path, description = result
                 record = {

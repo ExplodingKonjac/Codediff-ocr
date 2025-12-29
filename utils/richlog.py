@@ -1,6 +1,6 @@
-from traceback import print_tb
 import logging
-from logging.handlers import QueueHandler
+import functools
+from logging.handlers import QueueHandler, QueueListener
 from multiprocessing import Queue
 
 from rich.logging import RichHandler
@@ -8,18 +8,14 @@ from rich.console import Group
 from rich.traceback import Traceback
 
 
-class RichExceptionHandler(RichHandler):
-    """Add traceback to log record."""
-
+class _RichExceptionHandler(RichHandler):
     def render_message(self, record: logging.LogRecord, message):
         if e := getattr(record, 'rich_traceback', None):
             return Group(message, e)
         return super().render_message(record, message)
 
 
-class RichQueueHandler(QueueHandler):
-    """Add traceback to log record."""
-
+class _RichQueueHandler(QueueHandler):
     def __init__(self, queue: Queue, rich_tracebacks: bool, **tracebacks_config) -> None:
         super().__init__(queue)
         self.rich_tracebacks = rich_tracebacks
@@ -50,3 +46,44 @@ class RichQueueHandler(QueueHandler):
         record.msg = self.format(record)
         record.args = None
         return record
+
+
+class RichLogManager:
+    """
+    A manager class to simplify rich.logging in multiprocess environments.
+    """
+    def __init__(self, level: str | int, **handler_kwargs):
+        self._queue = Queue()
+        self._level = level
+        self._handler_kwargs = handler_kwargs
+
+    def _set_basic_config(self):
+        logging.basicConfig(
+            level=self._level,
+            format="[bold cyan][%(name)s][/] %(message)s",
+            handlers=[_RichQueueHandler(self._queue, **self._handler_kwargs)],
+        )
+
+    def main_process(self, func):
+        """Decorator for main process."""
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            self._set_basic_config()
+            listener = QueueListener(
+                self._queue,
+                _RichExceptionHandler(**self._handler_kwargs)
+            )
+            listener.start()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                listener.stop()
+        return wrapper
+
+    def sub_process(self, func):
+        """Decorator for sub process."""
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            self._set_basic_config()
+            return func(*args, **kwargs)
+        return wrapper

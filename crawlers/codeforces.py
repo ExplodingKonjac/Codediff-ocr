@@ -8,10 +8,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from crawlers import (
-    request_retry, parent_convert,
-    apply_visual_augmentations, get_screenshot_with_jitter
-)
+from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from utils.web import request_retry
 
 
 class CodeforcesConverter(MarkdownConverter):
@@ -36,8 +34,8 @@ class CodeforcesConverter(MarkdownConverter):
            'memory-limit' in class_list or \
            'input-file' in class_list or \
            'output-file' in class_list:
-            return parent_convert(self, 'div', el, el.get_text(': '), parent_tags)
-        return parent_convert(self, 'div', el, text, parent_tags)
+            return getattr(super(), "convert_div")(el, el.get_text(': '), parent_tags)
+        return getattr(super(), "convert_div")(el, text, parent_tags)
 
     def convert_span(self,
                      el: bs4.element.Tag,
@@ -63,7 +61,7 @@ class CodeforcesConverter(MarkdownConverter):
                     text: str,
                     parent_tags: set[str]) -> str:
         text = el.get_text('\n')
-        return parent_convert(self, 'pre', el, text, parent_tags)
+        return getattr(super(), "convert_pre")(el, text, parent_tags)
 
 
 def crawl_problem(page: Page, *,

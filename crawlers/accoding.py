@@ -9,10 +9,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from crawlers import (
-    parent_convert, request_retry,
-    apply_visual_augmentations, get_screenshot_with_jitter
-)
+from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from utils.web import request_retry
 
 
 class AcCodingConverter(MarkdownConverter):
@@ -26,7 +24,7 @@ class AcCodingConverter(MarkdownConverter):
         if 'MathJax' in class_list:
             tex = el.next_sibling
             return "" if tex is None else f"${tex.text.strip()}$"
-        return parent_convert(self, 'span', el, text, parent_tags)
+        return text
 
     def convert_div(self,
                     el: bs4.element.Tag,
@@ -36,7 +34,7 @@ class AcCodingConverter(MarkdownConverter):
         if 'MathJax_Display' in class_list:
             tex = el.next_sibling
             return "" if tex is None else f"\n\n$$\n{tex.text.strip()}\n$$\n\n"
-        return parent_convert(self, 'div', el, text, parent_tags)
+        return getattr(super(), "convert_div")(el, text, parent_tags)
 
     def convert_a(self,
                   el: bs4.element.Tag,
