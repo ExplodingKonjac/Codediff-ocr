@@ -1,20 +1,22 @@
-from tkinter.tix import Tree
-from importlib import import_module
-from pathlib import Path 
+from typing import Optional
+from pathlib import Path
 
 import click
 from playwright.sync_api import sync_playwright
+from PIL import Image
 
-from crawlers import format_markdown
+from crawlers import format_markdown, crawl_problem
 
 @click.command()
 @click.option('--state-file', 'state_file', type=str, default=None)
 @click.option('--oj', 'oj', type=str, required=True)
 @click.option('--problem-id', 'problem_id', type=str, required=True)
-def test_crawler(state_file: str | None, oj: str, problem_id: str):
+@click.option('--contest-id', 'contest_id', type=str, default=None)
+def test_crawler(state_file: Optional[str],
+                 oj: str,
+                 problem_id: str,
+                 contest_id: Optional[str]):
     """Test crawler"""
-
-    crawler = import_module(f'crawlers.{oj}')
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -28,9 +30,15 @@ def test_crawler(state_file: str | None, oj: str, problem_id: str):
         )
         page = context.new_page()
 
-        image, description = crawler.crawl_problem(page, problem_id)
-        image.save("output/image.png")
-        Path('output/description.md').write_text(
-            format_markdown(description),
-            encoding='utf-8'
+        image, description = crawl_problem(
+            page,
+            oj,
+            problem_id=problem_id,
+            contest_id=contest_id,
         )
+
+        image: Image.Image = image.convert('RGB')
+        description: str = format_markdown(description)
+
+        image.save("output/image.png")
+        Path('output/description.md').write_text(description, encoding='utf-8')

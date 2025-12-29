@@ -1,12 +1,16 @@
 import re
+import logging
+from typing import Iterator, Optional
 
 import bs4
+import requests
 from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
 from crawlers import (
-    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
+    request_retry, parent_convert,
+    apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -50,24 +54,22 @@ class AtCoderConverter(MarkdownConverter):
         return super().convert_hN(n - 1, el, text, parent_tags)
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
+def crawl_problem(page: Page, *,
+                  problem_id: str,
+                  contest_id: str) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from AtCoder
 
     Args:
         page (Page): The page object.
         problem_id (str): Problem ID in AtCoder.
+        contest_id (str): Contest ID in AtCoder.
 
     Returns:
         tuple[Image.Image, str]: A tuple of (image, description)
     """
 
-    match = re.fullmatch(r'([a-zA-Z]+\d+)([a-zA-Z]+)', problem_id.lower())
-    if match is None:
-        raise RuntimeError("Invalid problem_id")
-    contest, problem_index = match.groups()
-
-    page.goto(f"https://atcoder.jp/contests/{contest}/tasks/{contest}_{problem_index}")
+    page.goto(f"https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}")
     page.wait_for_load_state("networkidle")
 
     # locate statement element
@@ -105,3 +107,25 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     description = re.sub(r'\n{3,}', '\n\n', description)
 
     return image, description
+
+def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
+    """
+    Fetch problem list from AtCoder.
+
+    Yields:
+        tuple[str, Optional[str]]: A tuple of (problem_id, contest_id)
+    """
+
+    logger = logging.getLogger("Fetcher")
+    resp = request_retry(10, lambda: requests.get(
+        'https://kenkoooo.com/atcoder/resources/contest-problem.json',
+        timeout=5,
+    ), lambda retry_count, e: logger.exception(
+        "Failed to fetch problem list from AtCoder: %s, retrying (%d)...",
+        repr(e), retry_count
+    ))
+    if resp is None:
+        logger.error("Failed to fetch problem list from AtCoder")
+    else:
+        for problem_info in resp.json():
+            yield (problem_info['problem_id'], problem_info['contest_id'])

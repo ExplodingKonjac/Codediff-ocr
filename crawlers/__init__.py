@@ -2,9 +2,11 @@ import io
 import re
 import random
 import time
-from typing import Literal, Iterable
+from typing import Literal, Iterable, Optional, Callable, Iterator
+from importlib import import_module
 
 import bs4
+import requests
 from playwright.sync_api import Page, Locator
 from PIL import Image
 from pylatexenc.latexwalker import (
@@ -42,6 +44,14 @@ class _MyRenderer(MarkdownRenderer):
         return f"${format_latex(token['raw'])}$"
 
 
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' \
+             'AppleWebKit/537.36 (KHTML, like Gecko) ' \
+             'Chrome/143.0.0.0 ' \
+             'Safari/537.36 ' \
+             'Edg/143.0.0.0'
+
+OJNames = Literal['accoding', 'atcoder', 'codeforces', 'loj', 'luogu']
+
 _latex_ctx = get_default_latex_context_db()
 _latex_ctx.add_context_category(
     'extra',
@@ -58,6 +68,31 @@ _latex_ctx.add_context_category(
         std_environment('gathered', None, is_math_mode=True),
     ]
 )
+_crawler_cache = {}
+
+def request_retry(count: int,
+                  req_func: Callable[[], requests.Response],
+                  log_func: Callable[[int, Exception], None]) -> Optional[requests.Response]:
+    """
+    Retry a request with a given count.
+
+    Args:
+        count (int): The number of retries.
+        req_func (Callable[[], requests.Response]): The function to call.
+        log_func (Callable[[int], None]): The function to log.
+
+    Returns:
+        Optional[requests.Response]: The response if successful, None otherwise.
+    """
+    for _ in range(count):
+        try:
+            resp = req_func()
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            log_func(_ + 1, e)
+            time.sleep(1)
+    return None
 
 def parent_convert(obj: object,
                    tag_name: str,
@@ -81,7 +116,6 @@ def apply_visual_augmentations(page: Page, locator: Locator):
     # resize viewport
     width = random.randint(1000, 2000)
     page.set_viewport_size({"width": width, "height": 1080})
-    print(f"[Augment] Changing width to {width}px")
 
     # inject css
     font_pool_en: dict[str, list[str]] = {
@@ -143,13 +177,6 @@ def apply_visual_augmentations(page: Page, locator: Locator):
     # adjust height
     new_height = page.evaluate("document.body.scrollHeight")
     page.set_viewport_size({"width": width, "height": new_height})
-
-    print(
-        f"[Augment] CSS injection: "
-        f"fontFamily = {font_family}, "
-        f"fontSize = {font_size}, "
-        f"lineHeight = {line_height}"
-    )
     time.sleep(0.2)
 
 def get_screenshot_with_jitter(page: Page, locator: Locator) -> Image.Image:
@@ -223,7 +250,9 @@ def format_latex(tex: str, form: Literal['compact'] = 'compact') -> str:
                 result = ''
 
             elif isinstance(node, LatexMacroNode):
-                result = f'\\{node.macroname}{format_args(node.nodeargd.argnlist)}'
+                result = f'\\{node.macroname}'
+                if node.nodeargd is not None:
+                    result += format_args(node.nodeargd.argnlist)
 
             elif isinstance(node, LatexEnvironmentNode):
                 result = f'\\begin{{{node.environmentname}}}' \
@@ -245,13 +274,14 @@ def format_latex(tex: str, form: Literal['compact'] = 'compact') -> str:
     else:
         raise ValueError(f"Unknown form: {form}")
 
-    def format_args(args: Iterable[LatexNode]):
+    def format_args(args: Optional[Iterable[LatexNode]]):
         result = ""
-        for arg in args:
-            s = format_node(arg)
-            if isinstance(arg, LatexCharsNode):
-                s = f'{{{s}}}'
-            result += s
+        if args is not None:
+            for arg in args:
+                s = format_node(arg)
+                if isinstance(arg, LatexCharsNode):
+                    s = f'{{{s}}}'
+                result += s
         return result
 
     def format_nodes(nodes: Iterable[LatexNode]):
@@ -293,3 +323,42 @@ def format_markdown(markdown: str) -> str:
     result = md(markdown)
     assert isinstance(result, str)
     return result
+
+def crawl_problem(page: Page,
+                  oj: OJNames,
+                  *,
+                  problem_id: str,
+                  contest_id: Optional[str] = None) -> tuple[Image.Image, str]:
+    """
+    Crawl a problem from a specific OJ.
+
+    Args:
+        oj (Literal['accoding', 'atcoder', 'codeforces', 'loj', 'luogu']): The OJ to crawl from.
+        problem_id (str): The problem ID to crawl.
+        contest_id (str): The contest ID to crawl.
+
+    Returns:
+        tuple[Image.Image, str]: The crawled problem image and description.
+    """
+
+    m = _crawler_cache.get(oj)
+    if m is None:
+        m = import_module(f"crawlers.{oj}")
+        _crawler_cache[oj] = m
+    return m.crawl_problem(page, problem_id=problem_id, contest_id=contest_id)
+
+def fetch_problem_list(oj: OJNames) -> Iterator[tuple[str, Optional[str]]]:
+    """
+    Fetch problem list from a specific OJ.
+
+    Args:
+        oj (OJNames): The OJ to fetch from.
+
+    Yields:
+        tuple[str, Optional[str]]: A tuple of (problem_id, contest_id).
+    """
+    m = _crawler_cache.get(oj)
+    if m is None:
+        m = import_module(f"crawlers.{oj}")
+        _crawler_cache[oj] = m
+    return m.fetch_problem_list()

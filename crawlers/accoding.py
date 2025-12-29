@@ -1,12 +1,17 @@
+import logging
 import re
+from itertools import count
+from typing import Optional, Iterator
 
 import bs4
+import requests
 from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
 from crawlers import (
-    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
+    parent_convert, request_retry,
+    apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -49,13 +54,16 @@ class AcCodingConverter(MarkdownConverter):
         return "[IMAGE]"
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
+def crawl_problem(page: Page, *,
+                  problem_id: str,
+                  contest_id: Optional[str] = None) -> tuple[Image.Image, str]:
     """
     Crawl a problem of given problem_id from AcCoding.
 
     Args:
         page (Page): The page object.
         problem_id (str): Problem ID in AcCoding.
+        contest_id (str): Not used, for compatibility with other crawlers.
 
     Returns:
         tuple[Image.Image, str]: A tuple of (image, description)
@@ -80,3 +88,32 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     description = re.sub(r'\n{3,}', '\n\n', description)
 
     return image, description
+
+def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
+    """
+    Fetch problem list from AcCoding.
+
+    Yields:
+        tuple[str, Optional[str]]: A tuple of (problem_id, contest_id)
+    """
+
+    logger = logging.getLogger("Fetcher")
+    for page in count(0):
+        resp = request_retry(5, lambda: requests.get(
+            "https://accoding.buaa.edu.cn/problem/index",
+            params={"page": page},
+            timeout=5,
+        ), lambda e, retry_count: logger.exception(
+            "Failed to fetch problem list from AcCoding: %s, retrying (%d)...",
+            repr(e), retry_count
+        ))
+        if resp is None:
+            logger.error("Failed to fetch page %d of problem list from AcCoding", page)
+        else:
+            soup = bs4.BeautifulSoup(resp.text, 'html.parser')
+            for tag in soup.find_all(id=re.compile(r'tr\d')):
+                link = tag.find('a')
+                if link is not None and link.text != '0':
+                    href = link.get('href')
+                    if isinstance(href, str):
+                        yield (href.split('/')[0], None)

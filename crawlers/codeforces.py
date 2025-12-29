@@ -1,12 +1,16 @@
 import re
+import logging
+from typing import Optional, Iterator
 
 import bs4
+import requests
 from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
 from crawlers import (
-    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
+    request_retry, parent_convert,
+    apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -62,21 +66,24 @@ class CodeforcesConverter(MarkdownConverter):
         return parent_convert(self, 'pre', el, text, parent_tags)
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
+def crawl_problem(page: Page, *,
+                  problem_id: str,
+                  contest_id: Optional[str] = None) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id from Codeforces
 
     Args:
         page (Page): The page object.
         problem_id (str): Problem ID in Codeforces.
+        contest_id (str): Contest ID in Codeforces.
 
     Returns:
         tuple[Image.Image, str]: A tuple of (image, description)
     """
 
-    match = re.fullmatch(r'(\d+)([A-Z]+)', problem_id)
+    match = re.fullmatch(r'(\d+)([A-Z]+\d*)', problem_id)
     if match is None:
-        raise RuntimeError("invalid problem_id")
+        raise RuntimeError(f"Invalid problem_id '{problem_id}'")
 
     contest_id, problem_index = match.groups()
     page.goto(f"https://codeforces.com/problemset/problem/{contest_id}/{problem_index}")
@@ -115,3 +122,27 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     description = converter.convert(statement.inner_html())
 
     return image, description
+
+def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
+    """
+    Fetch problem list from Codeforces.
+
+    Yields:
+        tuple[str, Optional[str]]: A tuple of (problem_id, contest_id)
+    """
+    logger = logging.getLogger("Fetcher")
+
+    resp = request_retry(10, lambda: requests.get(
+        "https://codeforces.com/api/problemset.problems",
+        timeout=5,
+    ), lambda retry_count, e: logger.exception(
+        "Failed to fetch problem list from Codeforces: %s, retrying (%d)...",
+        repr(e), retry_count
+    ))
+    if resp is None:
+        logger.error("Failed to fetch problem list from Codeforces")
+    else:
+        for problem_info in resp.json()['result']['problems']:
+            contest_id = str(problem_info['contestId'])
+            problem_id = contest_id + problem_info['index']
+            yield (problem_id, contest_id)

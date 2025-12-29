@@ -1,10 +1,16 @@
+import logging
+from itertools import count
+from typing import Optional, Iterator
+
 import bs4
+import requests
 from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
 from crawlers import (
-    parent_convert, apply_visual_augmentations, get_screenshot_with_jitter
+    request_retry, parent_convert,
+    apply_visual_augmentations, get_screenshot_with_jitter
 )
 
 
@@ -43,13 +49,16 @@ class LOJConverter(MarkdownConverter):
         return parent_convert(self, 'a', el, text, parent_tags)
 
 
-def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
+def crawl_problem(page: Page, *,
+                  problem_id: str,
+                  contest_id: Optional[str] = None) -> tuple[Image.Image, str]:
     """
     Crawl problem statement of a given problem_id in LOJ
 
     Args:
         page (Page): The page object.
         problem_id (str): Problem ID in LOJ.
+        contest_id (str): Not used, for compatibility with other crawlers.
 
     Returns:
         tuple[Image.Image, str]: A tuple of (image, description)
@@ -79,3 +88,30 @@ def crawl_problem(page: Page, problem_id: str) -> tuple[Image.Image, str]:
     description = converter.convert(statement.inner_html())
 
     return image, description
+
+def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
+    """
+    Fetch problem list from LOJ.
+
+    Yields:
+        tuple[str, Optional[str]]: A tuple of (problem_id, contest_id)
+    """
+    logger = logging.getLogger("Fetcher")
+    page_delta = 100
+    for page in count(0, page_delta):
+        resp = request_retry(5, lambda: requests.post(
+            'https://api.loj.ac/api/problem/queryProblemSet',
+            json={'locale': 'zh_CN', 'skipCount': page, 'takeCount': page_delta},
+            timeout=5,
+        ), lambda e, retry_count: logger.exception(
+            "Failed to fetch problem list from LOJ: %s, retrying (%d)...",
+            repr(e), retry_count
+        ))
+        if resp is None:
+            logger.error("Failed to fetch page %d to %d from LOJ", page, page + page_delta)
+        else:
+            info_list = resp.json()['result']
+            if len(info_list) == 0:
+                break
+            for problem_info in info_list:
+                yield (str(problem_info['meta']['displayId']), None)
