@@ -1,3 +1,6 @@
+"""
+Utils for text processing.
+"""
 import re
 from typing import Optional, Literal, Iterable
 

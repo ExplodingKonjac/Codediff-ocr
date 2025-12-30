@@ -1,3 +1,6 @@
+"""
+Module including crawler for LOJ.
+"""
 import logging
 from itertools import count
 from typing import Optional, Iterator

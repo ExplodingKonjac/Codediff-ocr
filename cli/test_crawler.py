@@ -1,3 +1,6 @@
+"""
+Module including cli command test-crawler
+"""
 from typing import Optional
 from pathlib import Path
 
@@ -5,16 +8,16 @@ import click
 from playwright.sync_api import sync_playwright
 from PIL import Image
 
-from crawlers import crawl_problem
+from crawlers import crawl_problem, OJNames
 from utils.text import format_markdown
 
 @click.command()
 @click.option('--state-file', 'state_file', type=str, default=None)
-@click.option('--oj', 'oj', type=str, required=True)
+@click.option('--oj', 'oj', type=click.Choice(['atcoder', 'codeforces', 'loj', 'luogu', 'accoding']), required=True)
 @click.option('--problem-id', 'problem_id', type=str, required=True)
 @click.option('--contest-id', 'contest_id', type=str, default=None)
 def test_crawler(state_file: Optional[str],
-                 oj: str,
+                 oj: OJNames,
                  problem_id: str,
                  contest_id: Optional[str]):
     """Test crawler"""

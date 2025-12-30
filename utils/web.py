@@ -1,3 +1,6 @@
+"""
+Utils for web related tasks.
+"""
 import time
 from typing import Optional, Callable
 

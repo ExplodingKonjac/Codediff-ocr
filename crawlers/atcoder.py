@@ -1,3 +1,6 @@
+"""
+Module including crawler for atcoder.
+"""
 import re
 import logging
 from typing import Iterator, Optional
@@ -71,7 +74,7 @@ def crawl_problem(page: Page, *,
     page.wait_for_load_state("networkidle")
 
     # locate statement element
-    statement = page.locator('#task-statement').locator('xpath=..')
+    statement = page.locator('#task-statement').first.locator('xpath=..')
     if not statement.is_visible():
         raise RuntimeError("Problem statement not found")
 

@@ -1,3 +1,6 @@
+"""
+Module including crawler for Codeforces.
+"""
 import re
 import logging
 from typing import Optional, Iterator

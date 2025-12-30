@@ -1,3 +1,6 @@
+"""
+Module including crawler for AcCoding.
+"""
 import logging
 import re
 from itertools import count

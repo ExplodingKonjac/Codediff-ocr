@@ -1,3 +1,6 @@
+"""
+Module including cli command save-cookies
+"""
 import click
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import Page

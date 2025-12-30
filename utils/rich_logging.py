@@ -1,3 +1,6 @@
+"""
+Configures rich logging for multiprocess environments.
+"""
 import logging
 import functools
 from logging.handlers import QueueHandler, QueueListener
@@ -55,14 +58,31 @@ class RichLogManager:
     def __init__(self, level: str | int, **handler_kwargs):
         self._queue = Queue()
         self._level = level
+        handler_kwargs.setdefault('log_time_format', "[%X]")
+        handler_kwargs.setdefault('markup', True)
+        handler_kwargs.setdefault('omit_repeated_times', False)
+        handler_kwargs.setdefault('show_path', False)
+        handler_kwargs.setdefault('rich_tracebacks', True)
         self._handler_kwargs = handler_kwargs
 
     def _set_basic_config(self):
+        # basic logging config
         logging.basicConfig(
             level=self._level,
             format="[bold cyan][%(name)s][/] %(message)s",
             handlers=[_RichQueueHandler(self._queue, **self._handler_kwargs)],
+            force=True,
         )
+
+        # set transformers logging
+        import transformers
+        import huggingface_hub
+        transformers.logging.disable_default_handler()
+        for name in ('transformers', 'huggingface_hub'):
+            logger = logging.getLogger(name)
+            logger.handlers = []
+            logger.addHandler(RichHandler(**self._handler_kwargs))
+            logger.propagate = False
 
     def main_process(self, func):
         """Decorator for main process."""

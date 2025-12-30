@@ -1,3 +1,6 @@
+"""
+Module including crawler for Luogu.
+"""
 import time
 import logging
 from typing import Optional, Iterator
