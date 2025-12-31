@@ -8,7 +8,9 @@ from multiprocessing import Queue
 
 from rich.logging import RichHandler
 from rich.console import Group
-from rich.traceback import Traceback
+from rich.traceback import Traceback, install
+
+install()
 
 
 class _RichExceptionHandler(RichHandler):
@@ -69,7 +71,7 @@ class RichLogManager:
         # basic logging config
         logging.basicConfig(
             level=self._level,
-            format="[bold cyan][%(name)s][/] %(message)s",
+            format="[bold cyan]\\[%(name)s][/] %(message)s",
             handlers=[_RichQueueHandler(self._queue, **self._handler_kwargs)],
             force=True,
         )

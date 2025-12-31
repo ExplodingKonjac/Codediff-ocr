@@ -1,6 +1,8 @@
 """
 Module including cli command save-cookies
 """
+from pathlib import Path
+
 import click
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import Page
@@ -28,8 +30,8 @@ def _login_accoding(page: Page):
 
 @click.command()
 @click.option('--login-accoding', 'login_accoding', is_flag=True)
-@click.option('--save', 'save_file', type=str, required=True)
-def save_cookies(login_accoding: bool, save_file: str):
+@click.option('--output', 'output', type=click.Path(path_type=Path), required=True)
+def save_cookies(login_accoding: bool, output: Path):
     """Save cookies to file."""
 
     with sync_playwright() as p:
@@ -40,5 +42,5 @@ def save_cookies(login_accoding: bool, save_file: str):
         if login_accoding:
             _login_accoding(page)
 
-        page.context.storage_state(path=save_file)
-        click.echo(f"Storage state saved to {save_file}")
+        page.context.storage_state(path=output)
+        click.echo(f"Storage state saved to {output}")

@@ -17,7 +17,6 @@ from rich.progress import (
     Progress, TextColumn, BarColumn, TimeRemainingColumn, TimeElapsedColumn,
     MofNCompleteColumn
 )
-from rich.traceback import install
 from PIL import Image
 
 from crawlers import crawl_problem, fetch_problem_list
@@ -28,8 +27,7 @@ from utils.text import format_markdown
 RESTART_LOOPS = 100
 DEFAULT_WORKERS = max((os.cpu_count() or 1) - 2, 1)
 
-log_manager = RichLogManager(level=logging.INFO)
-install()
+_log_manager = RichLogManager(level=logging.INFO)
 
 
 @dataclass(frozen=True)
@@ -40,7 +38,7 @@ class Problem:
     contest_id: Optional[str]
 
 
-@log_manager.sub_process
+@_log_manager.sub_process
 def _producer_process(output_path: Path,
                       num_workers: int,
                       task_queue: Queue,
@@ -77,7 +75,7 @@ def _producer_process(output_path: Path,
         task_queue.put(None)
     logger.info("Fetching done. %d tasks in total.", task_count)
 
-@log_manager.sub_process
+@_log_manager.sub_process
 def _worker_process(worker_id: int,
                     state_file: Optional[Path],
                     output_path: Path,
@@ -158,7 +156,7 @@ def _worker_process(worker_id: int,
 @click.option('--output', '-o', 'output_path', type=click.Path(path_type=Path), required=True)
 @click.option('--num-workers', '-j', 'num_workers', type=int, default=DEFAULT_WORKERS)
 @click.option('--state-file', 'state_file', type=click.Path(path_type=Path), default=None)
-@log_manager.main_process
+@_log_manager.main_process
 def fetch_data(output_path: Path, num_workers: int, state_file: Optional[str]):
     """Fetch the data from OJs."""
 
