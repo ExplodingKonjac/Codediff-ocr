@@ -1,8 +1,7 @@
 """
 Module including cli command train
 """
-import logging
-import utils.rich_tqdmpatch
+import app.utils.rich_tqdmpatch
 
 import logging
 from dataclasses import dataclass
@@ -18,7 +17,7 @@ from datasets import DatasetDict
 from peft import LoraConfig
 from trl import SFTTrainer, SFTConfig
 
-from utils.rich_logging import RichLogManager
+from app.utils.rich_logging import RichLogManager
 
 DEFAULT_DEVICE = (
     'cuda' if torch.cuda.is_available() else

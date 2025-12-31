@@ -8,8 +8,8 @@ import click
 from playwright.sync_api import sync_playwright
 from PIL import Image
 
-from crawlers import crawl_problem, OJNames
-from utils.text import format_markdown
+from app.crawlers import crawl_problem, OJNames
+from app.utils.text import format_markdown
 
 @click.command()
 @click.option('--state-file', 'state_file', type=str, default=None)

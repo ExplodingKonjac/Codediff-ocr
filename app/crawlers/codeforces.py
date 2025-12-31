@@ -11,8 +11,8 @@ from playwright.sync_api import Page
 from PIL import Image
 from markdownify import MarkdownConverter
 
-from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
-from utils.web import request_retry
+from app.crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from app.utils.web import request_retry
 
 
 class CodeforcesConverter(MarkdownConverter):

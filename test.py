@@ -4,7 +4,7 @@ import logging
 
 from transformers import AutoModelForImageTextToText
 
-from utils.rich_logging import RichLogManager
+from app.utils.rich_logging import RichLogManager
 
 log_manager = RichLogManager(level=logging.INFO)
 

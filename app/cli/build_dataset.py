@@ -1,7 +1,7 @@
 """
 Module including cli command build-dataset.
 """
-import utils.rich_tqdmpatch
+import app.utils.rich_tqdmpatch
 
 import os
 import logging
@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 from datasets import load_dataset, Dataset, DatasetDict, Image
 
-from utils.rich_logging import RichLogManager
+from app.utils.rich_logging import RichLogManager
 
 DEFAULT_WORKERS = max((os.cpu_count() or 1) - 2, 1)
 SEED = 38567114

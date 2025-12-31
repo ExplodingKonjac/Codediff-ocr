@@ -19,10 +19,10 @@ from rich.progress import (
 )
 from PIL import Image
 
-from crawlers import crawl_problem, fetch_problem_list
-from utils.rich_logging import RichLogManager
-from utils.web import USER_AGENT
-from utils.text import format_markdown
+from app.crawlers import crawl_problem, fetch_problem_list
+from app.utils.rich_logging import RichLogManager
+from app.utils.web import USER_AGENT
+from app.utils.text import format_markdown
 
 RESTART_LOOPS = 100
 DEFAULT_WORKERS = max((os.cpu_count() or 1) - 2, 1)

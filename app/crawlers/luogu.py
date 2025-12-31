@@ -10,8 +10,8 @@ import requests
 from playwright.sync_api import Page
 from PIL import Image
 
-from crawlers import apply_visual_augmentations, get_screenshot_with_jitter
-from utils.web import USER_AGENT, request_retry
+from app.crawlers import apply_visual_augmentations, get_screenshot_with_jitter
+from app.utils.web import USER_AGENT, request_retry
 
 def crawl_problem(page: Page, *,
                   problem_id: str,
