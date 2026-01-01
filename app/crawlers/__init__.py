@@ -150,7 +150,7 @@ def crawl_problem(page: Page,
 
     m = _crawler_cache.get(oj)
     if m is None:
-        m = import_module(f"crawlers.{oj}")
+        m = import_module(f".{oj}")
         _crawler_cache[oj] = m
     return m.crawl_problem(page, problem_id=problem_id, contest_id=contest_id)
 
@@ -166,6 +166,6 @@ def fetch_problem_list(oj: OJNames) -> Iterator[tuple[str, Optional[str]]]:
     """
     m = _crawler_cache.get(oj)
     if m is None:
-        m = import_module(f"crawlers.{oj}")
+        m = import_module(f".{oj}")
         _crawler_cache[oj] = m
     return m.fetch_problem_list()
