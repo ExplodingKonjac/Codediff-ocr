@@ -104,7 +104,7 @@ def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
             "https://accoding.buaa.edu.cn/problem/index",
             params={"page": page},
             timeout=5,
-        ), lambda e, retry_count: logger.exception(
+        ), lambda retry_count, e: logger.exception(
             "Failed to fetch problem list from AcCoding: %s, retrying (%d)...",
             repr(e), retry_count
         ))
