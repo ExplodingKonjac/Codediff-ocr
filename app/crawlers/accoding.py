@@ -112,9 +112,13 @@ def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
             logger.error("Failed to fetch page %d of problem list from AcCoding", page)
         else:
             soup = bs4.BeautifulSoup(resp.text, 'html.parser')
+            cnt = 0
             for tag in soup.find_all(id=re.compile(r'tr\d')):
                 link = tag.find('a')
                 if link is not None and link.text != '0':
                     href = link.get('href')
                     if isinstance(href, str):
+                        cnt += 1
                         yield (href.split('/')[0], None)
+            if cnt == 0:
+                break

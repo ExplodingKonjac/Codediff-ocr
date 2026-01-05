@@ -12,7 +12,6 @@ from pylatexenc.latexwalker import (
 from pylatexenc.macrospec import std_macro, std_environment
 from mistune import create_markdown
 from mistune.plugins.math import math, math_in_list, math_in_quote
-from mistune.plugins.formatting import strikethrough
 from mistune.renderers.markdown import MarkdownRenderer
 
 
@@ -56,6 +55,9 @@ class _MyRenderer(MarkdownRenderer):
         """Render block math"""
         return f"${format_latex(token['raw'])}$"
 
+    def strikethrough(self, token, state) -> str:
+        """Render strikethrough"""
+        return f"~~{self.render_children(token, state)}~~"
 
 def format_latex(tex: str, form: Literal['compact'] = 'compact') -> str:
     """
@@ -151,8 +153,9 @@ def format_markdown(markdown: str) -> str:
 
     md = create_markdown(
         renderer=_MyRenderer(),
-        plugins=[math, math_in_list, math_in_quote, strikethrough]
+        plugins=["strikethrough", math, math_in_list, math_in_quote]
     )
+    markdown = re.sub(r'(\n)*\$\$(\n)*', '\n$$\n', markdown)
     result = md(markdown)
     assert isinstance(result, str)
     return result

@@ -61,11 +61,12 @@ def _producer_process(output_path: Path,
         logger.exception("Error reading meta.jsonl")
 
     task_count = 0
-    for oj in ('atcoder', 'codeforces', 'loj', 'luogu', 'accoding'):
-    # for oj in ('accoding',):
+    # for oj in ('atcoder', 'codeforces', 'loj', 'luogu', 'accoding'):
+    for oj in ('luogu',):
         logger.info("Fetching problem list from %s...", oj)
         for problem_id, contest_id in fetch_problem_list(oj):
             task = Problem(oj=oj, problem_id=problem_id, contest_id=contest_id)
+            logger.info("get task %s", task.problem_id)
             if task not in tasks_done:
                 task_queue.put(task)
                 report_queue.put(1)
@@ -137,6 +138,8 @@ def _worker_process(worker_id: int,
                     problem = task_queue.get()
                     if problem is None:
                         logger.info("exiting...")
+                        report_queue.put(None)
+                        logger.info("Finished.")
                         return
                 except Exception:
                     logger.info("Error when getting task, retry after 1 second...")
@@ -149,8 +152,6 @@ def _worker_process(worker_id: int,
 
             logger.info("Reached restart limit, restarting browser...")
 
-    report_queue.put(None)
-    logger.info("Finished.")
 
 @click.command()
 @click.option('--output', '-o', 'output_path', type=click.Path(path_type=Path), required=True)
