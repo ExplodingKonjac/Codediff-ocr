@@ -61,8 +61,8 @@ def _producer_process(output_path: Path,
         logger.exception("Error reading meta.jsonl")
 
     task_count = 0
-    # for oj in ('atcoder', 'codeforces', 'loj', 'luogu', 'accoding'):
-    for oj in ('luogu',):
+    for oj in ('atcoder', 'codeforces', 'loj', 'luogu', 'accoding'):
+    # for oj in ('luogu',):
         logger.info("Fetching problem list from %s...", oj)
         for problem_id, contest_id in fetch_problem_list(oj):
             task = Problem(oj=oj, problem_id=problem_id, contest_id=contest_id)

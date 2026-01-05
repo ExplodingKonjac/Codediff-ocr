@@ -82,9 +82,12 @@ def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
                     page, problem_type
                 )
             else:
-                data = resp.json()['data']['problems']
-                for problem in data['result']:
-                    yield (problem['pid'], None)
-                total_num += data['perPage']
-                if total_num >= data['count']:
-                    break
+                try:
+                    data = resp.json()['data']['problems']
+                    for problem in data['result']:
+                        yield (problem['pid'], None)
+                    total_num += data['perPage']
+                    if total_num >= data['count']:
+                        break
+                except Exception:
+                    logger.exception("Failed to process data: %s", resp.text)
