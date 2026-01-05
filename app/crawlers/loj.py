@@ -111,8 +111,11 @@ def fetch_problem_list() -> Iterator[tuple[str, Optional[str]]]:
         if resp is None:
             logger.error("Failed to fetch page %d to %d from LOJ", page, page + page_delta)
         else:
-            info_list = resp.json()['result']
-            if len(info_list) == 0:
-                break
-            for problem_info in info_list:
-                yield (str(problem_info['meta']['displayId']), None)
+            try:
+                info_list = resp.json()['result']
+                if len(info_list) == 0:
+                    break
+                for problem_info in info_list:
+                    yield (str(problem_info['meta']['displayId']), None)
+            except Exception:
+                logger.exception("Failed to process data: %s", resp.text)
