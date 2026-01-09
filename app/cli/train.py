@@ -99,7 +99,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     )
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
-    logger.info("Base model loaded.")
+    logger.info("Base model loaded. (device=%s)", device)
 
     logger.info("Loading processor...")
     processor = GotOcr2Processor.from_pretrained(base_model, use_fast=True)
