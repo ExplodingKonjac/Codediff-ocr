@@ -96,7 +96,6 @@ def train(base_model: str, dataset: str, output: str, device: str):
         base_model,
         dtype=torch.bfloat16,
         device_map=device,
-        attn_implementation='flash_attention_2'
     )
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
