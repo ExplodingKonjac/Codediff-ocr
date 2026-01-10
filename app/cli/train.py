@@ -1,8 +1,6 @@
 """
 Module including cli command train
 """
-import app.utils.rich_tqdmpatch
-
 import logging
 from dataclasses import dataclass
 
@@ -10,8 +8,8 @@ import click
 import torch
 import torch.nn.utils
 from transformers import (
-    GotOcr2ForConditionalGeneration, GotOcr2Processor, PreTrainedTokenizerBase,
-    set_seed
+    AutoModelForImageTextToText, AutoProcessor, PreTrainedTokenizerBase,
+    ProcessorMixin, set_seed
 )
 from datasets import DatasetDict
 from peft import LoraConfig
@@ -29,7 +27,7 @@ log_manager = RichLogManager(level=logging.INFO)
 
 @dataclass
 class _DataCollator:
-    processor: GotOcr2Processor
+    processor: ProcessorMixin
     tokenizer: PreTrainedTokenizerBase
     device: str
 
@@ -92,7 +90,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger = logging.getLogger('Main')
 
     logger.info("Loading base model (device=%s)...", device)
-    model = GotOcr2ForConditionalGeneration.from_pretrained(
+    model = AutoModelForImageTextToText.from_pretrained(
         base_model,
         dtype=torch.bfloat16,
         device_map=device,
@@ -102,7 +100,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger.info("Base model loaded. (device=%s)", device)
 
     logger.info("Loading processor...")
-    processor = GotOcr2Processor.from_pretrained(base_model)
+    processor = AutoProcessor.from_pretrained(base_model)
     logger.info("Processor loaded.")
 
     logger.info("Loading dataset...")

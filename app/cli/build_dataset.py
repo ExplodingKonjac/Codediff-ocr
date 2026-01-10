@@ -1,8 +1,6 @@
 """
 Module including cli command build-dataset.
 """
-import app.utils.rich_tqdmpatch
-
 import os
 import logging
 from pathlib import Path
