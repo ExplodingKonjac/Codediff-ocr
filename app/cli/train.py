@@ -9,7 +9,8 @@ import torch
 import torch.nn.utils
 from transformers import (
     AutoModelForImageTextToText, AutoProcessor, PreTrainedTokenizerBase,
-    ProcessorMixin, set_seed
+    ProcessorMixin, GotOcr2ForConditionalGeneration,
+    set_seed
 )
 from datasets import DatasetDict
 from peft import LoraConfig
@@ -77,6 +78,10 @@ class _DataCollator:
         }
 
 
+class GotOcrEnableFA2(GotOcr2ForConditionalGeneration):
+    _supports_flash_attn_2 = True
+
+
 @click.command
 @click.option('--base-model', 'base_model', type=str, default='stepfun-ai/GOT-OCR-2.0-hf')
 @click.option('--dataset', 'dataset', type=click.Path(), required=True)
@@ -90,10 +95,11 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger = logging.getLogger('Main')
 
     logger.info("Loading base model (device=%s)...", device)
-    model = AutoModelForImageTextToText.from_pretrained(
+    model = GotOcrEnableFA2.from_pretrained(
         base_model,
         dtype=torch.bfloat16,
         device_map=device,
+        attn_implementation="flash_attention_2"
     )
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
@@ -112,7 +118,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     data_collator = _DataCollator(
         processor=processor,
         tokenizer=processor.tokenizer,
-        device=device
+        device=device,
     )
     lora_config = LoraConfig(
         r=32,
