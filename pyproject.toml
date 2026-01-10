@@ -20,6 +20,7 @@ dependencies = [
     "rich>=14.2.0",
     "tensorboard>=2.6.0",
     "tensorboardx>=2.6.4",
+    "torch>=2.9.1",
     "torchvision>=0.24.1",
     "transformers>=4.57.3",
     "trl>=0.26.2",
@@ -28,3 +29,16 @@ dependencies = [
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
