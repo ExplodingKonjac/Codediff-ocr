@@ -102,7 +102,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger.info("Base model loaded. (device=%s)", device)
 
     logger.info("Loading processor...")
-    processor = GotOcr2Processor.from_pretrained(base_model, use_fast=True)
+    processor = GotOcr2Processor.from_pretrained(base_model)
     logger.info("Processor loaded.")
 
     logger.info("Loading dataset...")
