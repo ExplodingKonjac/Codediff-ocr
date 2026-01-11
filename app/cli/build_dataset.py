@@ -61,11 +61,17 @@ def build_dataset(raw: Path, output: Path, num_workers: int, val_size: float | i
         remove_columns=['oj', 'problem_id', 'contest_id', 'image_path', 'description'],
         num_proc=num_workers
     )
+
     logger.info("Converting image path to Image...")
     ds = ds.cast_column("image", Image())
-    logger.info("Filtering out images that are too large...")
-    ds = ds.filter(lambda e: e['image'].size[0] * e['image'].size[1] < 2048 * 2048)
+
+    logger.info("Filtering out large data...")
+    ds = ds.filter(lambda e: (
+        e['image'].size[0] * e['image'].size[1] < 2048 * 2048 and
+        len(e['text']) < 8192
+    ))
     assert isinstance(ds, Dataset)
+    logger.info("%d examples left.", len(ds))
 
     logger.info("Splitting dataset to TRAIN and VAL...")
     ds_split = ds.train_test_split(test_size=val_size, seed=SEED)
