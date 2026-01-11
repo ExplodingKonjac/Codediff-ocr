@@ -9,7 +9,7 @@ import torch
 import torch.nn.utils
 from transformers import (
     AutoModelForImageTextToText, AutoProcessor, PreTrainedTokenizerBase,
-    ProcessorMixin, GotOcr2ForConditionalGeneration,
+    ProcessorMixin, GotOcr2ForConditionalGeneration, GotOcr2Model,
     set_seed
 )
 from datasets import DatasetDict
@@ -78,9 +78,8 @@ class _DataCollator:
         }
 
 
-class GotOcrEnableFA2(GotOcr2ForConditionalGeneration):
-    _supports_flash_attn_2 = True
-
+GotOcr2ForConditionalGeneration._supports_flash_attn_2 = True
+GotOcr2Model._supports_flash_attn_2 = True
 
 @click.command
 @click.option('--base-model', 'base_model', type=str, default='stepfun-ai/GOT-OCR-2.0-hf')
@@ -95,7 +94,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger = logging.getLogger('Main')
 
     logger.info("Loading base model (device=%s)...", device)
-    model = GotOcrEnableFA2.from_pretrained(
+    model = GotOcr2ForConditionalGeneration.from_pretrained(
         base_model,
         dtype=torch.bfloat16,
         device_map=device,
