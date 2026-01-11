@@ -8,9 +8,8 @@ import click
 import torch
 import torch.nn.utils
 from transformers import (
-    Qwen2Model, AutoConfig, AutoProcessor, PreTrainedTokenizerBase,
-    GotOcr2Processor, GotOcr2ForConditionalGeneration,
-    set_seed
+    AutoConfig, PreTrainedTokenizerBase, GotOcr2Processor, 
+    GotOcr2ForConditionalGeneration, set_seed
 )
 from datasets import DatasetDict
 from peft import LoraConfig
@@ -39,14 +38,10 @@ class _DataCollator:
 
         for item in batch:
             prompt = self.processor(
-                item['image'],
-                format=True,
-                crop_to_patches=True,
-                return_tensors='pt'
+                item['image'], format=True, return_tensors='pt'
             ).to(self.device)
             completion = self.tokenizer(
-                item['text'] + '<|im_end|>',
-                return_tensors='pt'
+                item['text'] + '<|im_end|>', return_tensors='pt'
             ).to(self.device)
 
             input_ids_list.append(
@@ -139,6 +134,7 @@ def train(base_model: str, dataset: str, output: str, device: str):
         fp16=False,
         learning_rate=5e-5,
         lr_scheduler_type='cosine',
+        optim='adamw_bnb_8bit',
         weight_decay=0.01,
         warmup_ratio=0.1,
         save_total_limit=2,
