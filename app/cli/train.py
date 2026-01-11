@@ -8,8 +8,8 @@ import click
 import torch
 import torch.nn.utils
 from transformers import (
-    AutoModelForImageTextToText, AutoProcessor, PreTrainedTokenizerBase,
-    ProcessorMixin, GotOcr2ForConditionalGeneration, GotOcr2Model,
+    Qwen2Model, AutoConfig, AutoProcessor, PreTrainedTokenizerBase,
+    GotOcr2Processor, GotOcr2ForConditionalGeneration,
     set_seed
 )
 from datasets import DatasetDict
@@ -28,7 +28,7 @@ log_manager = RichLogManager(level=logging.INFO)
 
 @dataclass
 class _DataCollator:
-    processor: ProcessorMixin
+    processor: GotOcr2Processor
     tokenizer: PreTrainedTokenizerBase
     device: str
 
@@ -78,9 +78,6 @@ class _DataCollator:
         }
 
 
-GotOcr2ForConditionalGeneration._supports_flash_attn_2 = True
-GotOcr2Model._supports_flash_attn_2 = True
-
 @click.command
 @click.option('--base-model', 'base_model', type=str, default='stepfun-ai/GOT-OCR-2.0-hf')
 @click.option('--dataset', 'dataset', type=click.Path(), required=True)
@@ -94,18 +91,21 @@ def train(base_model: str, dataset: str, output: str, device: str):
     logger = logging.getLogger('Main')
 
     logger.info("Loading base model (device=%s)...", device)
+    config = AutoConfig.from_pretrained(base_model)
+    config.text_config._attn_implementation = 'flash_attention_2'
     model = GotOcr2ForConditionalGeneration.from_pretrained(
         base_model,
+        config=config,
         dtype=torch.bfloat16,
         device_map=device,
-        attn_implementation="flash_attention_2"
     )
+    logger.info("Model architecture: %s", model)
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     logger.info("Base model loaded. (device=%s)", device)
 
     logger.info("Loading processor...")
-    processor = AutoProcessor.from_pretrained(base_model)
+    processor = GotOcr2Processor.from_pretrained(base_model)
     logger.info("Processor loaded.")
 
     logger.info("Loading dataset...")
